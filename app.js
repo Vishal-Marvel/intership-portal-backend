@@ -10,6 +10,7 @@ const studentRouter = require('./routes/studentRouter');
 const staffRouter = require('./routes/staffRouter');
 const internshipRouter = require('./routes/internshipRouter');
 const adminRouter = require('./routes/adminRouter');
+const skillRouter = require('./routes/skillRouter');
 const app = express();
 
 
@@ -38,6 +39,7 @@ app.use('/internship/api/v1/students', studentRouter);
 app.use('/internship/api/v1/staffs', staffRouter);
 app.use('/internship/api/v1/internships', internshipRouter);
 app.use('/internship/api/v1/admin', adminRouter);
+app.use('/internship/api/v1/skill', skillRouter);
 
 if(process.env.NODE_ENV === 'development')
   app.use(morgan('dev'));

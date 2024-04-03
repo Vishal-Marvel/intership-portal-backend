@@ -2,7 +2,6 @@ const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
 const studentController = require('../controllers/studentController');
-const skillController = require('../controllers/skillController');
 const notificationController = require('../controllers/notificationController');
 const multer = require("multer");
 const upload = multer({
@@ -26,9 +25,8 @@ router.get('/viewStudent/:id',
     studentController.viewStudent);
 router.get('/viewStudent',studentController.viewStudent);
 router.get('/internships', studentController.viewStudentInternship)
-router.get('/getAllSkills', skillController.getAllSkills)
 router.get('/image/:id', studentController.getProfilePhoto)
-router.get('/student-notifications', notificationController.viewStudentNotifications)
+router.get('/notifications', notificationController.viewStudentNotifications)
 router.use(authController.doNotAllow('student'))
 router.route('/:id')
     .put(studentController.updateStudentByStaff)

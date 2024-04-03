@@ -5,7 +5,7 @@
   "description": "Student Internship Portal",
   "main": "app.js",
   "scripts": {
-    "start": "node server.js",
+    "start": "nodemon server.js",
     "migrate": "knex migrate:latest --knexfile db/knexfile.js",
     "create-migrate": "knex migrate:make migration --knexfile db/knexfile.js"
   },
@@ -45,8 +45,10 @@
     "node-sass": "^9.0.0",
     "node-schedule": "^2.1.1",
     "nodemailer": "^6.9.3",
+    "nodemon": "^3.1.0",
     "parcel-bundler": "^1.12.5",
     "pdfkit": "^0.13.0",
+    "sqlite3": "^5.1.6",
     "uuid": "^9.0.0",
     "validator": "^13.9.0",
     "webpack": "^5.88.0",

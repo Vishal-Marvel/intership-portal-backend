@@ -344,11 +344,10 @@ exports.studentLogin = catchAsync(async (req,res, next)=>{
         const student = await Student.where({email}).fetch();
 
         if (!(await student.verifyPassword(password))) {
-            res.status(400).json({
+            return res.status(400).json({
                 status: 'fail',
                 message: 'Incorrect Password'
             });
-            return;
         }
         const roles = ["student"];
         const  clg = student.get('sec_sit');
@@ -385,6 +384,7 @@ exports.studentLogin = catchAsync(async (req,res, next)=>{
 })
 
 exports.staffLogin = catchAsync(async (req,res, next)=>{
+    
     const { email, password } = req.body;
 
     if (!email || !password) {

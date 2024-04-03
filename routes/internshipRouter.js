@@ -11,6 +11,7 @@ const upload = multer({
 });
 
 router.use(authController.protect);
+router.get('/check/:id', internship.checkCompletionStatus);
 router.post('/register',upload.single('file'), internship.registerInternship);
 // router.post('/completion-update/:id',upload.fields([
 //     { name: 'certificate' },

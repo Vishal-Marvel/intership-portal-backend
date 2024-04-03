@@ -11,7 +11,7 @@ class AppError extends Error {
   sendResponse(res) {
     res.status(this.statusCode).json({
       status: this.status,
-      error: this.message,
+      message: this.message,
     });
   }
 }
