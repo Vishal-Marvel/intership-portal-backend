@@ -81,7 +81,6 @@ exports.updateRole = catchAsync(async (req, res) => {
     try {
         const roles = req.body.roles;
         const staff = await Staff.where({ id: req.body.id }).fetch({ withRelated: ['roles'] });
-
         const staffData = staff.toJSON();
         // Fetch the existing roles of the staff
         const existingRoles = staff.related('roles').pluck('role_name');
@@ -444,7 +443,8 @@ exports.viewMultipleStudent = catchAsync(async (req, res) => {
 exports.getDepartMentors = catchAsync(async (req, res)=>{
     try{
         const dept = req.params.dept;
-        const staffs = await Staff.where({department: dept}).fetchAll({withRelated: ["roles"]});
+        const sec_sit = req.params.clg;
+        const staffs = await Staff.where({department: dept, sec_sit}).fetchAll({withRelated: ["roles"]});
         const staffNameEmail = {};
         for (const staff of staffs) {
             const roles = staff.related('roles').pluck('role_name');

@@ -51,24 +51,7 @@ exports.performStartUp = async function () {
             console.error(e.message);
         }
     }
-    try {
-        const role = await Role.where({role_name: "admin"}).fetch();
-
-        const admin = new Staff({
-            name: "admin",
-            email: "admin@website",
-            password: "admin23"
-        });
-
-        await admin.save();
-        await admin.roles().attach(role);
-
-    } catch (e) {
-        if (e.code === "ER_DUP_ENTRY") {
-        } else {
-            console.error(e.message);
-        }
-    }
+   
     // Path to the file on the server
     const filePath = 'public/images/default.png';
     const fileBuffer = fs.readFileSync(filePath);
@@ -87,6 +70,25 @@ exports.performStartUp = async function () {
         })
         await file.save();
         console.log("profile Photo saved");
+    }
+
+    try {
+        const role = await Role.where({role_name: "admin"}).fetch();
+        const chkFile = await File.where({file_name:"default_profile_photo"}).fetch()
+        const admin = new Staff({
+            name: "admin",
+            email: "admin@sairam.edu.in",
+            password: "admin23",
+            profile_photo: chkFile.get("id")
+        });
+        await admin.save();
+        await admin.roles().attach(role);
+
+    } catch (e) {
+        if (e.code === "ER_DUP_ENTRY") {
+        } else {
+            console.error(e.message);
+        }
     }
 
     console.log('Startup tasks completed');

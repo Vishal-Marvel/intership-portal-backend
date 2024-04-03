@@ -43,7 +43,7 @@ const createStudentsTable = async () => {
           table.string("sec_sit");
           table.string("student_id").unique();
           table.integer("year_of_studying");
-          table.integer("batch");
+          table.string("batch");
           table.date("registered_date");
           table.string("register_num");
           table.string("department");
