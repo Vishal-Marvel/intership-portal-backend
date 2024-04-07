@@ -144,34 +144,34 @@ exports.studentSignUp = catchAsync(async (req, res) => {
       staff_id,
       profile_photo,
     });
-    const allSkills = await Skill.fetchAll();
-    const skillNames = allSkills.map((skill) => skill.get("skill_name"));
-    const errors = [];
-    let skillArr;
-    if (!Array.isArray(skills)) {
-      skillArr = skills.split(",").map((skill) => skill.trim());
-    } else {
-      skillArr = skills;
-    }
+    // const allSkills = await Skill.fetchAll();
+    // const skillNames = allSkills.map((skill) => skill.get("skill_name"));
+    // const errors = [];
+    // let skillArr;
+    // if (!Array.isArray(skills)) {
+    //   skillArr = skills.split(",").map((skill) => skill.trim());
+    // } else {
+    //   skillArr = skills;
+    // }
 
-    skillArr.forEach((skill) => {
-      if (!skillNames.includes(skill)) {
-        errors.push(`${skill} skill Not Found`);
-      }
-    });
-    if (errors.length > 0) {
-      const err = new AppError(errors, 404);
-      err.sendResponse(res);
-      return;
-    }
-    await student.save();
-    const skillObjs = await Promise.all(
-      skillArr.map(
-        async (skill) => await Skill.where({ skill_name: skill }).fetch()
-      )
-    );
-    const skillIds = skillObjs.map((skill) => skill.get("id"));
-    await student.skills().attach(skillIds);
+    // skillArr.forEach((skill) => {
+    //   if (!skillNames.includes(skill)) {
+    //     errors.push(`${skill} skill Not Found`);
+    //   }
+    // });
+    // if (errors.length > 0) {
+    //   const err = new AppError(errors, 404);
+    //   err.sendResponse(res);
+    //   return;
+    // }
+    // await student.save();
+    // const skillObjs = await Promise.all(
+    //   skillArr.map(
+    //     async (skill) => await Skill.where({ skill_name: skill }).fetch()
+    //   )
+    // );
+    // const skillIds = skillObjs.map((skill) => skill.get("id"));
+    await student.skills().attach(skills);
 
     res.status(201).json({
       status: "success",
@@ -500,7 +500,7 @@ exports.staffForgotPasswordReq = catchAsync(async (req, res) => {
     });
   } catch (e) {
     if (e.message === "EmptyResponse") {
-      const error = new AppError("Staff Not Found", 404);
+      const error = new AppError("Faculty Not Found", 404);
       error.sendResponse(res);
     } else {
       const error = new AppError(e.message, 500);
@@ -522,14 +522,11 @@ exports.staffForgotPasswordRes = catchAsync(async (req, res) => {
       })
       .catch((err) => {
         if (err.message === "EmptyResponse") {
-          throw new AppError(`Staff with mail ${email} not found`, 404);
+          throw new AppError(`Faculty with mail ${email} not found`, 404);
         }
       });
 
-    const currentDate = new Date();
-    const otpValidity = new Date(staff.get("OTP_validity"));
-
-    if (staff.get("OTP") === otp && otpValidity > currentDate) {
+    if (staff.get("OTP") == otp) {
       staff.set({
         password: newPassword,
         OTP: null,
@@ -578,9 +575,12 @@ exports.studentForgotPasswordReq = catchAsync(async (req, res) => {
         tableName: "students",
       }
     );
-    // await sendEmail(student.get('email'), "Forgot Password Request"
-    //     , `OTP for change password is ${otp}\nValid for 1 hr\n\n\n
-    //     This is a auto generated mail. Do Not Reply`);
+    // await sendEmail(
+    //   student.get("email"),
+    //   "Forgot Password Request",
+    //   `OTP for change password is ${otp}\nValid for 1 hr\n\n\n
+    //     This is a auto generated mail. Do Not Reply`
+    // );
     res.status(200).json({
       status: "success",
       message: "OTP sent",
@@ -613,23 +613,22 @@ exports.studentForgotPasswordRes = catchAsync(async (req, res) => {
         }
       });
 
-    const currentDate = new Date();
-    const otpValidity = new Date(student.get("OTP_validity"));
 
-    if (student.get("OTP") === otp && otpValidity > currentDate) {
-      student.set({
-        password: newPassword,
-        OTP: null,
-        OTP_validity: null,
-      });
+    if (student.get("OTP") == otp) {
+        student.set({
+          password: newPassword,
+          OTP: null,
+          OTP_validity: null,
+        });
 
-      await student.encryptPassword();
-      await student.save();
+        await student.encryptPassword();
+        await student.save();
 
-      return res.status(200).json({
-        status: "success",
-        message: "Password Changed",
-      });
+        return res.status(200).json({
+          status: "success",
+          message: "Password Changed",
+        });
+     
     } else {
       throw new AppError(`Invalid OTP`);
     }

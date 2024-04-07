@@ -11,6 +11,7 @@ exports.createNotification = catchAsync(async (req, res) => {
         const facultyId = req.user.id; // Assuming you have user authentication and you get faculty ID from user
         const role = req.user.roles.toString();
         departments = departments.toString();
+        
 
         const notification = await Notification.forge({
             message,

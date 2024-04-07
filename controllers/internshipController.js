@@ -5,6 +5,7 @@ const AppError = require("../utils/appError");
 const { sendEmail } = require("../utils/mail");
 const { saveFile } = require("../utils/saveFiles");
 const Student = require("../models/studentModel");
+const Staff = require("../models/staffModel");
 const File = require("../models/fileModel");
 const fs = require("fs");
 const { generateInternshipDetails } = require("../utils/pdfGenerator");
@@ -17,7 +18,7 @@ function sleep(ms) {
 
 exports.checkCompletionStatus = catchAsync(async (req, res) => {
   let student_id;
-  if (req.user.roles.includes("student")) {   
+  if (req.user.roles.includes("student")) {
     student_id = req.user.id;
   } else {
     student_id = req.params.id;
@@ -35,7 +36,10 @@ exports.checkCompletionStatus = catchAsync(async (req, res) => {
       err.sendResponse(res);
     }
   }
-  return res.status(200);
+
+  return res.status(200).json({
+    status: "success",
+  });
 });
 
 exports.registerInternship = catchAsync(async (req, res) => {
@@ -81,14 +85,19 @@ exports.registerInternship = catchAsync(async (req, res) => {
     ) {
       throw new AppError("All fields are required", 400);
     }
+    const newstarting_date = new Date(starting_date);
+    const ending_date = new Date(newstarting_date);
+    ending_date.setDate(ending_date.getDate() + no_of_days);
 
-    const ending_date = new Date(starting_date);
-    ending_date.setDate(starting_date + no_of_days);
+    if (mode_of_intern === "online") {
+      no_of_days /= 2;
+    }
 
     //special case
     if (req.user.roles.includes("student")) {
       const student = await Student.where({ id: req.user.id }).fetch();
-      if (student.get("total_days_internship") + no_of_days > 45) {
+      console.log(student.get("total_days_internship") + +no_of_days);
+      if (student.get("total_days_internship") + +no_of_days > 45) {
         res.status(400).json({
           status: "failed",
           message: "Internship Days Exceeded",
@@ -109,13 +118,9 @@ exports.registerInternship = catchAsync(async (req, res) => {
         throw new AppError("Previous internship not completed", 400);
       }
     }
-    if (mode_of_intern === "online") {
-      no_of_days /= 2;
-    }
 
     const student = await Student.where({ id: student_id }).fetch();
     const { buffer, mimetype, originalname } = req.file;
-    console.log(buffer);
     const fileName = `${student.get(
       "student_id"
     )}_${company_name}_offer_letter`;
@@ -128,7 +133,6 @@ exports.registerInternship = catchAsync(async (req, res) => {
     );
     const certificate = null;
     // Create a new instance of the InternshipDetails model
-    const newstarting_date = new Date(starting_date);
     const internshipDetails = new InternshipDetails({
       company_name,
       company_address,
@@ -223,6 +227,11 @@ exports.uploadCompletionForm = catchAsync(async (req, res) => {
       // feedback: feedbackId,
       internship_status: "Completed",
     });
+    student.set({
+      total_days_internship:
+        student.get("total_days_internship") + internship.get("no_of_days"),
+    });
+    await student.save();
 
     res.status(201).json({
       status: "success",
@@ -259,12 +268,116 @@ exports.viewInternship = catchAsync(async (req, res) => {
     // Send the response
     res.status(200).json(responseData);
   } catch (err) {
-    const error = new AppError(err.message, err.statusCode || 500);
+    const error = new AppError(err.message, 500);
     error.sendResponse(res);
   }
 });
 
-exports.viewInternships = catchAsync(async (req, res) => {});
+exports.viewInternships = catchAsync(async (req, res) => {
+  try {
+    const loggedInStaffId = req.user.id;
+    const loggedInStaffRole = req.user.roles; // Role of the logged-in staff member
+    const loggedInStaffSecSit = req.user.sec_sit; // SEC or SIT value for the logged-in staff
+    const isCEOOrTapCell =
+      loggedInStaffRole.includes("ceo") ||
+      loggedInStaffRole.includes("tapcell");
+    const isPrincipal = loggedInStaffRole.includes("principal");
+    const isHODOrCoordinator =
+      loggedInStaffRole.includes("hod") ||
+      loggedInStaffRole.includes("internshipcoordinator");
+    const isMentor = loggedInStaffRole.includes("mentor");
+    let students;
+    if (isCEOOrTapCell) {
+      // Fetch all students from the database
+      students = await Student.fetchAll({ withRelated: "skills" });
+    } else if (isPrincipal) {
+      // Fetch all students from the same SEC or SIT as the Principal
+      students = await Student.where({ sec_sit: loggedInStaffSecSit }).fetchAll(
+        {
+          withRelated: "skills",
+        }
+      );
+    } else if (isHODOrCoordinator) {
+      // Fetch all students from the same department as the HOD or Coordinator
+      const department = req.user.department;
+
+      students = await Student.where({
+        department: department,
+        sec_sit: loggedInStaffSecSit,
+      }).fetchAll({ withRelated: "skills" });
+    } else if (isMentor) {
+      // Fetch all students from the staff id (mentor)
+
+      students = await Student.where({
+        staff_id: loggedInStaffId,
+      }).fetchAll({ withRelated: "skills" });
+    } else {
+      throw new AppError("Unauthorised access to view multiple students", 403);
+    }
+    if (!students || students.length === 0) {
+      throw new AppError("No Student found in the database", 404);
+    }
+
+    const processedStudents = students.map(async (student) => {
+      // Copy student attributes to a new object
+      const processedStudent = { ...student.attributes };
+
+      // Exclude specific fields
+      const excludedFields = ["registered_date", "password", "staff_id"];
+      for (const field of excludedFields) {
+        delete processedStudent[field];
+      }
+
+      // Fetch mentor details using staff_id from the student table
+      const mentorId = student.get("staff_id");
+      const mentor = await Staff.where({ id: mentorId }).fetch();
+      processedStudent.mentor_name = mentor.get("name");
+
+      // Process skills
+      processedStudent.skills = student
+        .related("skills")
+        .map((skill) => skill.get("skill_name"));
+
+      return processedStudent;
+    });
+
+    // Wait for all student processing to complete
+    const finalProcessedStudents = await Promise.all(processedStudents);
+
+    let internships = [];
+
+    await Promise.all(
+      finalProcessedStudents.map(async (student) => {
+        const internshipDetails = await InternshipDetails.where({
+          student_id: student.id,
+        }).fetchAll();
+
+        // Map each internship detail to a data object
+        const data = internshipDetails.map((internship) => ({
+          ...internship.attributes,
+          student,
+        }));
+
+        // Concatenate the data array to the internships array
+        internships = internships.concat(data);
+      })
+    );
+
+    const responseData = {
+      status: "success",
+      message: "Internship details retrieved successfully",
+      data: {
+        internships,
+      },
+    };
+
+    // Send the response
+    res.status(200).json(responseData);
+  } catch (err) {
+    const error = new AppError(err.message, 500);
+    error.sendResponse(res);
+  }
+});
 
 exports.updateInternship = catchAsync(async (req, res) => {
   try {
@@ -634,46 +747,52 @@ exports.approveInternship = catchAsync(async (req, res) => {
       //         + "Approve To Proceed\n\n\n\nThis is a auto generated mail. Do Not Reply");
       //
       // }
-      await sendEmail(
-        student.get("email"),
-        "Internship Approved - " + student.get("name"),
-        student.get("name") +
-          " Congratulations!! Your internship is approved successfully\n\n\n\nThis is a auto generated mail. Do Not Reply"
-      );
+      // await sendEmail(
+      //   student.get("email"),
+      //   "Internship Approved - " + student.get("name"),
+      //   student.get("name") +
+      //     " Congratulations!! Your internship is approved successfully\n\n\n\nThis is a auto generated mail. Do Not Reply"
+      // );
 
       res.status(200).json({
         status: "success",
         message: "Tap Cell - approved",
       });
-      // } else if (req.params.role === "principal" && approval.get("mentor") && approval.get("internshipcoordinator") && approval.get("hod") && approval.get("tapcell")) {
-      //     if (approval.get('principal') === 1) {
-      //         const error = new AppError("Principal already Approved", 400);
-      //         error.sendResponse(res);
-      //         return;
-      //     }
-      //     approval.set({
-      //         principal: true,
-      //         principal_id: req.user.id,
-      //         principal_approved_at: new Date()
-      //     });
-      //     if (approval.get('comments_by_Role') === 'principal') {
-      //         approval.set({
-      //             comments: null,
-      //             comments_by_id: null,
-      //             comments_by_Role: null,
-      //             commented_at: null
-      //         });
-      //     }
-      //     await approval.save();
+    } else if (
+      req.params.role === "principal" &&
+      approval.get("mentor") &&
+      approval.get("internshipcoordinator") &&
+      approval.get("hod") &&
+      approval.get("tapcell")
+    ) {
+      if (approval.get("principal") === 1) {
+        const error = new AppError("Principal already Approved", 400);
+        error.sendResponse(res);
+        return;
+      }
+      approval.set({
+        principal: true,
+        principal_id: req.user.id,
+        principal_approved_at: new Date(),
+      });
+      if (approval.get("comments_by_Role") === "principal") {
+        approval.set({
+          comments: null,
+          comments_by_id: null,
+          comments_by_Role: null,
+          commented_at: null,
+        });
+      }
+      await approval.save();
       //     await sendEmail(student.get("email"), "Internship Approved - " + student.get('name'),
       //         student.get('name') + " Congratulations!! Your internship is approved successfully\n\n\n\nThis is a auto generated mail. Do Not Reply");
       //
-      //     res.status(200).json({
-      //         status: "success",
-      //         message: "Principal - approved",
-      //     });
-      //     internship.set({approval_status: "Approved"})
-      //     await internship.save();
+      res.status(200).json({
+        status: "success",
+        message: "Principal - approved",
+      });
+      internship.set({ approval_status: "Approved" });
+      await internship.save();
     } else {
       res.status(400).json({
         status: "fail",
@@ -729,6 +848,8 @@ exports.getApprovalStatus = catchAsync(async (req, res) => {
       tap_cell: approval.get("tapcell"),
       principal: approval.get("principal"),
       comments: approval.get("comments"),
+      commentsBy: approval.get("comments_by_Role"),
+      rejectedBy: approval.get("rejected_by_Role"),
     };
     res.status(200).json({
       status: "success",
@@ -752,14 +873,18 @@ exports.reject = catchAsync(async (req, res) => {
       id: req.params.id,
     }).fetch();
     const comments = req.body.comments;
+
     approval.set({
       comments: comments,
       comments_by_id: req.user.id,
-      comments_by_Role: req.user.role,
+      comments_by_Role: req.params.role,
+      rejected_by_Role: req.params.role,
+      rejected_by_id: req.user.id,
       commented_at: new Date(),
     });
+
     internship.set({
-      approval_status: "rejected",
+      approval_status: "Rejected",
       internship_status: "Rejected",
     });
     await internship.save();
@@ -815,10 +940,10 @@ exports.downloadFiles = catchAsync(async (req, res) => {
     const fileData = file.get("file");
 
     res.setHeader("Content-Type", "application/pdf");
-    res.setHeader("Content-Disposition", `attachment; filename="${fileName}"`);
+    res.setHeader("content-disposition", `attachment; filename="${fileName}"`);
     res.send(fileData);
   } catch (err) {
-    const e = new AppError(err.message, err.statusCode || 500);
+    const e = new AppError(err.message, 500);
     e.sendResponse(res);
   }
 });

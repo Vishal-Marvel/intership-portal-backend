@@ -135,6 +135,8 @@ const createApprovalTable = async () => {
           table.string("comments_by_id");
           table.string("comments_by_Role");
           table.date("commented_at");
+          table.string("rejected_by_Role");
+          table.string("rejected_by_id");
           table
             .string("internship_id")
             .references("internships.id")

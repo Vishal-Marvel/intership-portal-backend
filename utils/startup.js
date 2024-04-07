@@ -77,7 +77,7 @@ exports.performStartUp = async function () {
         const chkFile = await File.where({file_name:"default_profile_photo"}).fetch()
         const admin = new Staff({
             name: "admin",
-            email: "admin@sairam.edu.in",
+            email: "admin@sairam.edu.in@sairam.edu.in",
             password: "admin23",
             profile_photo: chkFile.get("id")
         });

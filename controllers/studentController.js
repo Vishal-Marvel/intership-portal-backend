@@ -1,5 +1,7 @@
 const Student = require("../models/studentModel");
 const Skill = require("../models/skillModel");
+const InternshipDetails = require("../models/internshipModel");
+
 const catchAsync = require("../utils/catchAsync");
 const AppError = require("../utils/appError");
 const File = require("../models/fileModel");
@@ -71,7 +73,7 @@ exports.updateStudent = catchAsync(async (req, res) => {
     } else {
       skillArr = skills;
     }
-    const existingSkills = await student.related("skills").pluck("skill_name");
+    const existingSkills = await student.related("skills").pluck("id");
     const skillsToDelete = existingSkills.filter(
       (skill_id) => !skillArr.includes(skill_id)
     );
@@ -80,7 +82,7 @@ exports.updateStudent = catchAsync(async (req, res) => {
     );
     // console.log(existingSkills, skillsToDelete, skillsToAdd);
     const allSkills = await Skill.fetchAll();
-    const skillNames = allSkills.map((skill) => skill.get("skill_name"));
+    const skillNames = allSkills.map((skill) => skill.get("id"));
     const errors = [];
 
     skillsToAdd.forEach((skill) => {
@@ -93,24 +95,24 @@ exports.updateStudent = catchAsync(async (req, res) => {
       err.sendResponse(res);
       return;
     }
-    const skillsToDeleteObj = await Promise.all(
-      skillsToDelete.map(
-        async (skill) => await Skill.where({ skill_name: skill }).fetch()
-      )
-    );
-    const skillsToAddObj = await Promise.all(
-      skillsToAdd.map(
-        async (skill) => await Skill.where({ skill_name: skill }).fetch()
-      )
-    );
-    const skillsToDeleteIds = skillsToDeleteObj.map((skill) => skill.get("id"));
-    const skillsToAddIds = skillsToAddObj.map((skill) => skill.get("id"));
+    // const skillsToDeleteObj = await Promise.all(
+    //   skillsToDelete.map(
+    //     async (skill) => await Skill.where({ id: skill }).fetch()
+    //   )
+    // );
+    // const skillsToAddObj = await Promise.all(
+    //   skillsToAdd.map(
+    //     async (skill) => await Skill.where({ id: skill }).fetch()
+    //   )
+    // );
+    // const skillsToDeleteIds = skillsToDeleteObj.map((skill) => skill.get("id"));
+    // const skillsToAddIds = skillsToAddObj.map((skill) => skill.get("id"));
 
-    await student.skills().detach(skillsToDeleteIds);
+    await student.skills().detach(skillsToDelete);
 
-    await student.skills().attach(skillsToAddIds);
+    await student.skills().attach(skillsToAdd);
 
-    const updatedStudentWithSkills = await Student.forge({
+    await Student.forge({
       id: studentId,
     }).fetch({ withRelated: "skills" });
 
@@ -247,7 +249,7 @@ exports.viewStudent = catchAsync(async (req, res) => {
 
     // Transform the skills array to only include skill names
     const transformedSkills = unpickfields.skills.map(
-      (skill) => skill.skill_name
+      (skill) => ({id: skill.id,name:skill.skill_name})
     );
 
     if (
@@ -302,4 +304,43 @@ exports.getProfilePhoto = catchAsync(async (req, res) => {
   }
 });
 
-exports.viewStudentInternship = catchAsync(async (req, res) => {});
+exports.viewStudentInternship = catchAsync(async (req, res) => {
+  try {
+    let id;
+    if (req.user.roles.includes("student")) {
+      id = req.user.id;
+    }else{
+      id = req.params.id;
+    }
+    // Fetch the internship details using the provided internshipId
+    const student = await Student.where({
+      id,
+    }).fetch();
+    const internshipDetails = await InternshipDetails.where({
+      student_id: id,
+    }).fetchAll();
+
+    if (!internshipDetails && internshipDetails.length === 0) {
+      throw new AppError("Internship details not found", 404);
+    }
+    const internships = internshipDetails.map((internship) => ({
+      ...internship.attributes,
+      student,
+    }));
+
+    // You can customize the response format according to your needs
+    const responseData = {
+      status: "success",
+      message: "Internship details retrieved successfully",
+      data: {
+        internships,
+      },
+    };
+
+    // Send the response
+    res.status(200).json(responseData);
+  } catch (err) {
+    const error = new AppError(err.message, 500);
+    error.sendResponse(res);
+  }
+});
