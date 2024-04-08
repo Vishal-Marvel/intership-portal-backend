@@ -28,6 +28,11 @@ exports.checkCompletionStatus = catchAsync(async (req, res) => {
   const internships = await InternshipDetails.where({
     student_id: student_id,
   }).fetchAll();
+  const student = await Student.where({ id: student_id }).fetch();
+  if (student.get("total_days_internship") >= 45) {
+    const err = new AppError("45 days internship completed", 400);
+    err.sendResponse(res);
+  }
 
   for (const internship of internships) {
     // Access the specific detail of each internship
@@ -52,7 +57,7 @@ exports.registerInternship = catchAsync(async (req, res) => {
       current_cgpa,
       cin_gst_udyog,
       cin_gst_udyog_no,
-      academic_year,
+      sem,
       industry_supervisor_name,
       industry_supervisor_ph_no,
       industry_supervisor_email,
@@ -73,7 +78,7 @@ exports.registerInternship = catchAsync(async (req, res) => {
       !current_cgpa ||
       !cin_gst_udyog_no ||
       !cin_gst_udyog ||
-      !academic_year ||
+      !sem ||
       !industry_supervisor_name ||
       !industry_supervisor_email ||
       !industry_supervisor_ph_no ||
@@ -87,23 +92,13 @@ exports.registerInternship = catchAsync(async (req, res) => {
     }
     const newstarting_date = new Date(starting_date);
     const ending_date = new Date(newstarting_date);
-    ending_date.setDate(ending_date.getDate() + no_of_days);
-
+    ending_date.setDate(ending_date.getDay() + Number(no_of_days));
     if (mode_of_intern === "online") {
       no_of_days /= 2;
     }
 
     //special case
     if (req.user.roles.includes("student")) {
-      const student = await Student.where({ id: req.user.id }).fetch();
-      console.log(student.get("total_days_internship") + +no_of_days);
-      if (student.get("total_days_internship") + +no_of_days > 45) {
-        res.status(400).json({
-          status: "failed",
-          message: "Internship Days Exceeded",
-        });
-        return;
-      }
       student_id = req.user.id;
     } else {
       if (!student_id) throw new AppError("All fields are required", 400);
@@ -140,7 +135,7 @@ exports.registerInternship = catchAsync(async (req, res) => {
       current_cgpa,
       cin_gst_udyog,
       cin_gst_udyog_no,
-      academic_year,
+      sem,
       industry_supervisor_name,
       industry_supervisor_ph_no,
       industry_supervisor_email,

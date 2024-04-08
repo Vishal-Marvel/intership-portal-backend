@@ -24,10 +24,6 @@ router.get("/viewMultipleStudent", staffController.viewMultipleStudent);
 router.get("/viewStaff", staffController.viewStaff); //for same logged in staff
 router.get("/view-notifications", notificationController.viewNotifications);
 router.post("/create-notification", notificationController.createNotification);
-router.put(
-  "/update-notification/:id",
-  notificationController.updateNotifications
-);
 router.delete(
   "/delete-notification/:id",
   notificationController.deleteNotification

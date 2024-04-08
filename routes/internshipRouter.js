@@ -13,7 +13,7 @@ const upload = multer({
 
 router.use(authController.protect);
 router.get(
-  "/check/student",
+  "/check",
   authController.restrictTo("student"),
   internship.checkCompletionStatus
 );

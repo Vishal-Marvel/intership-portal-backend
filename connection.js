@@ -42,7 +42,7 @@ const createStudentsTable = async () => {
           table.string("name");
           table.string("sec_sit");
           table.string("student_id").unique();
-          table.integer("year_of_studying");
+          table.string("year_of_studying");
           table.string("batch");
           table.date("registered_date");
           table.string("register_num");
@@ -81,7 +81,7 @@ const createInternshipTable = async () => {
           table.string("current_cgpa");
           table.string("cin_gst_udyog_no");
           table.string("cin_gst_udyog");
-          table.string("academic_year");
+          table.string("sem");
           table.string("industry_supervisor_name");
           table.string("industry_supervisor_ph_no");
           table.string("industry_supervisor_email");
@@ -232,9 +232,11 @@ const createNotificationTable = async () => {
             .string("faculty_id")
             .references("staffs.id")
             .onDelete("CASCADE");
-          table.string("role");
+          table.string("type");
+          table.string("toRoles");
           table.date("created_at");
           table.date("updated_at");
+          table.date("expiry_at");
         });
       }
     });
