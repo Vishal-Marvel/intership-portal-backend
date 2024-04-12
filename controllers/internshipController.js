@@ -4,6 +4,7 @@ const catchAsync = require("../utils/catchAsync");
 const AppError = require("../utils/appError");
 const { sendEmail } = require("../utils/mail");
 const { saveFile } = require("../utils/saveFiles");
+
 const Student = require("../models/studentModel");
 const Staff = require("../models/staffModel");
 const File = require("../models/fileModel");
@@ -11,6 +12,7 @@ const fs = require("fs");
 const { generateInternshipDetails } = require("../utils/pdfGenerator");
 const moment = require("moment");
 const cron = require("node-cron");
+const { generate } = require("../utils/generatexlsx");
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -31,14 +33,14 @@ exports.checkCompletionStatus = catchAsync(async (req, res) => {
   const student = await Student.where({ id: student_id }).fetch();
   if (student.get("total_days_internship") >= 45) {
     const err = new AppError("45 days internship completed", 400);
-    err.sendResponse(res);
+    return err.sendResponse(res);
   }
 
   for (const internship of internships) {
     // Access the specific detail of each internship
     if (internship.get("internship_status") === "Not Completed") {
       const err = new AppError("Previous internship not completed", 400);
-      err.sendResponse(res);
+      return err.sendResponse(res);
     }
   }
 
@@ -180,7 +182,6 @@ exports.registerInternship = catchAsync(async (req, res) => {
     // Handle any errors that occur during the process
     const error = new AppError(err.message, 400);
     error.sendResponse(res);
-    throw err;
   }
 });
 
@@ -939,6 +940,92 @@ exports.downloadFiles = catchAsync(async (req, res) => {
     res.send(fileData);
   } catch (err) {
     const e = new AppError(err.message, 500);
+    e.sendResponse(res);
+  }
+});
+
+exports.downloadStudentInternhip = catchAsync(async (req, res) => {
+  try {
+    let { batch, sem, section, dept, college } = req.body;
+    let students;
+    const loggedInStaffRole = req.user.roles;
+    if (loggedInStaffRole.includes("principal")) {
+      college = req.user.sec_sit;
+      students = await Student.where({
+        sec_sit: college,
+        batch,
+        section,
+      }).fetchAll();
+    } else if (
+      loggedInStaffRole.includes("hod") ||
+      loggedInStaffRole.includes("internshipcoordinator")
+    ) {
+      dept = req.user.department;
+      college = req.user.sec_sit;
+      students = await Student.where({
+        sec_sit: college,
+        batch,
+        section,
+      }).fetchAll();
+    } else if (loggedInStaffRole.includes("mentor")) {
+      dept = req.user.department;
+      college = req.user.sec_sit;
+      students = await Student.where({ staff_id: req.user.id }).fetchAll();
+    }
+
+    const processedStudents = students.map(async (student) => {
+      // Copy student attributes to a new object
+      const processedStudent = { ...student.attributes };
+
+      // Exclude specific fields
+      const excludedFields = ["registered_date", "password", "staff_id"];
+      for (const field of excludedFields) {
+        delete processedStudent[field];
+      }
+
+      // Fetch mentor details using staff_id from the student table
+      const mentorId = student.get("staff_id");
+      const mentor = await Staff.where({ id: mentorId }).fetch();
+      processedStudent.mentor_name = mentor.get("name");
+
+      return processedStudent;
+    });
+
+    // Wait for all student processing to complete
+    const finalProcessedStudents = await Promise.all(processedStudents);
+
+    let internshipList = [];
+
+    await Promise.all(
+      finalProcessedStudents.map(async (student) => {
+        const internshipDetails = await InternshipDetails.where({
+          student_id: student.id,
+          sem,
+        }).fetchAll();
+
+        // Map each internship detail to a data object
+        const internships = internshipDetails.map((internship) => ({
+          ...internship.attributes,
+        }));
+        const data = { internships, student };
+
+        // Concatenate the data array to the internships array
+        internshipList = internshipList.concat(data);
+      })
+    );
+
+    res.setHeader(
+      "Content-Type",
+      "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    );
+
+    // console.log(internshipList);
+    const workbook = await generate(internshipList, college, dept);
+    await workbook.xlsx.write(res);
+    res.end();
+  } catch (error) {
+    console.log(error);
+    const e = new AppError(error.message, 500);
     e.sendResponse(res);
   }
 });

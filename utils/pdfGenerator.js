@@ -40,7 +40,7 @@ async function generateInternshipDetails(internship, student, approval) {
   // Add table rows with data and update tableY
   addTableRow("Student Id:", student.get("student_id"));
   addTableRow("Student Name:", student.get("name"));
-  addTableRow("SEC/SIT:", student.get("sec_sit"));
+  addTableRow("College:", student.get("sec_sit"));
   addTableRow("Register Number:", student.get("register_num"));
   addTableRow("Student Email:", student.get("email"));
   addTableRow("Student Department:", student.get("dept"));
@@ -55,12 +55,12 @@ async function generateInternshipDetails(internship, student, approval) {
       student.get("placed_company") ? "Placed" : "Not Placed"
     );
   }
-  addTableRow("Academic Year:", internship.get("sem"));
+  addTableRow("Semester:", internship.get("sem"));
   addTableRow("Current CGPA:", internship.get("current_cgpa"));
   addTableRow("Company Name:", internship.get("company_name"));
   addTableRow("Company Address:", internship.get("company_address"));
   addTableRow("Company Phone Number:", internship.get("company_ph_no"));
-  addTableRow("SIN/TIN/GST Number:", internship.get("sin_tin_gst_no"));
+  addTableRow("CIN/GST/UDYOG Number:", internship.get("cin_gst_udyog_no"));
   addTableRow(
     "Industry Supervisor Name:",
     internship.get("industry_supervisor_name")

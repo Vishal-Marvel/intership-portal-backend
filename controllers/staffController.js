@@ -47,8 +47,8 @@ const validateRoleAssignment = (role, data) => {
 exports.viewMenteeStudents = catchAsync(async (req, res) => {
   try {
     let staff_id;
-   
-      staff_id = req.params.id;
+
+    staff_id = req.params.id;
     // } else {
     //   const err = new AppError("Unauthorized Access", 401);
     //   err.sendResponse(res);
@@ -96,14 +96,32 @@ exports.viewMenteeStudents = catchAsync(async (req, res) => {
 
 // Controller function to get all roles
 exports.getAllRoles = catchAsync(async (req, res) => {
-  const roles = await Role.fetchAll();
-  const role_names = roles.map((role) => role.get("role_name")).filter((role)=>role!="admin");
+  const loggedInStaffRole = req.user.roles;
+  const isCeoOrAdmin =
+    loggedInStaffRole.includes("admin") || loggedInStaffRole.includes("ceo");
+  const isTapCell = loggedInStaffRole.includes("tapcell");
+  const isPrincipal = loggedInStaffRole.includes("principal");
+  const isHod = loggedInStaffRole.includes("hod");
 
+  const roles = await Role.fetchAll();
+  let role_names = roles
+    .map((role) => ({ name: role.get("role_name"), id: role.get("id") }))
+    .filter((role) => role.name != "admin");
+
+  if (isTapCell) {
+    role_names = role_names.filter((role) => role.name == "tapcell");
+  }
+  if (isPrincipal) {
+    role_names = role_names.filter((role) => role.name == "hod");
+  }
+  if (isHod) {
+    role_names = role_names.filter(
+      (role) => role.name == "mentor" || role.name == "internshipcoordinator"
+    );
+  }
   res.json({
     status: "success",
-    data: {
-      role_names,
-    },
+    roles: role_names,
   });
 });
 
@@ -164,18 +182,15 @@ exports.viewRoles = catchAsync(async (req, res) => {
   });
 
   // Fetch the existing roles of the staff
-  const existingRoles = staff.related("roles").pluck("role_name");
-  if (existingRoles.length === 0) {
-    return res.status(200).json({
-      status: "success",
-      message: "No Roles Found",
-    });
-  } else {
-    return res.status(200).json({
-      status: "success",
-      roles: existingRoles,
-    });
-  }
+  const existingRoles = staff.related("roles");
+  const roles = existingRoles.models.map((model) => model.attributes);
+
+  // console.log(existingRoles.pluck("roles"), existingRoles.pluck("id"));
+
+  return res.status(200).json({
+    status: "success",
+    roles,
+  });
 });
 
 exports.updateStaff = catchAsync(async (req, res) => {
@@ -355,21 +370,24 @@ exports.viewMultipleStaff = catchAsync(async (req, res) => {
     const loggedInStaffSecSit = req.user.sec_sit; // SEC or SIT value for the logged-in staff
     const isHOD = loggedInStaffRole.includes("hod");
     const isPrincipal = loggedInStaffRole.includes("principal");
-    const isCeo = loggedInStaffRole.includes("ceo");
+    const isCeo =
+      loggedInStaffRole.includes("ceo") || loggedInStaffRole.includes("admin");
     let staffs;
     if (isCeo) {
       // Fetch all staff from the database
-      staffs = await Staff.fetchAll({withRelated: "roles"});
+      staffs = await Staff.fetchAll({ withRelated: "roles" });
     } else if (isHOD) {
       // Fetch all staffs in the same department as the HOD
       const department = req.user.department;
       staffs = await Staff.where({
         department: department,
         sec_sit: loggedInStaffSecSit,
-      }).fetchAll({withRelated: "roles"});
+      }).fetchAll({ withRelated: "roles" });
     } else if (isPrincipal) {
       // Fetch all staffs in the same SEC or SIT as the Principal
-      staffs = await Staff.where({ sec_sit: loggedInStaffSecSit }).fetchAll({withRelated: "roles"});
+      staffs = await Staff.where({ sec_sit: loggedInStaffSecSit }).fetchAll({
+        withRelated: "roles",
+      });
     } else {
       throw new AppError("Unauthorised access to view multiple staffs", 403);
     }
@@ -387,8 +405,9 @@ exports.viewMultipleStaff = catchAsync(async (req, res) => {
       for (const field of excludedFields) {
         delete processedStaff[field];
       }
-      processedStaff.roles  = staff.related("roles")
-      .map(role=>role.get("role_name"))
+      processedStaff.roles = staff
+        .related("roles")
+        .map((role) => role.get("role_name"));
 
       return processedStaff;
     });
@@ -401,7 +420,6 @@ exports.viewMultipleStaff = catchAsync(async (req, res) => {
         staff.id !== loggedInStaffId && // Exclude staff with the logged-in staff ID
         (role === "all" || staff.roles.includes(role)) // Include staff with the specified role or include all if role is "all"
     );
-    
 
     // Return the staff details
     return res.status(200).json({

@@ -164,7 +164,7 @@ exports.studentSignUp = catchAsync(async (req, res) => {
     //   err.sendResponse(res);
     //   return;
     // }
-    // await student.save();
+    await student.save();
     // const skillObjs = await Promise.all(
     //   skillArr.map(
     //     async (skill) => await Skill.where({ skill_name: skill }).fetch()
@@ -386,7 +386,7 @@ exports.studentLogin = catchAsync(async (req, res, next) => {
       httpOnly: true,
     };
 
-    res.cookie("jwt", token, cookieOptions);
+    res.cookie("jwt", token, cookieOptions).send();
 
     res.status(200).json({
       status: "success",
@@ -613,22 +613,20 @@ exports.studentForgotPasswordRes = catchAsync(async (req, res) => {
         }
       });
 
-
     if (student.get("OTP") == otp) {
-        student.set({
-          password: newPassword,
-          OTP: null,
-          OTP_validity: null,
-        });
+      student.set({
+        password: newPassword,
+        OTP: null,
+        OTP_validity: null,
+      });
 
-        await student.encryptPassword();
-        await student.save();
+      await student.encryptPassword();
+      await student.save();
 
-        return res.status(200).json({
-          status: "success",
-          message: "Password Changed",
-        });
-     
+      return res.status(200).json({
+        status: "success",
+        message: "Password Changed",
+      });
     } else {
       throw new AppError(`Invalid OTP`);
     }

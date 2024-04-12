@@ -88,6 +88,7 @@ const createInternshipTable = async () => {
           table.string("mode_of_intern");
           table.date("starting_date");
           table.date("ending_date");
+
           table.integer("no_of_days");
           table.string("location");
           table.string("domain");

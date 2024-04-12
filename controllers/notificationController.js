@@ -119,18 +119,18 @@ exports.deleteNotification = catchAsync(async (req, res) => {
 // Schedule a job to run daily
 // schedule.scheduleJob("0 0 * * *", async () => {
 //   try {
-//     const today = new Date();
-//     // Fetch notifications older than 1 month
-//     const notificationsToDelete = await Notification.where(
-//       "expiry_at",
-//       "<",
-//       today
-//     ).fetchAll();
+// const today = new Date();
+// Fetch notifications older than 1 month
+// const notificationsToDelete = await Notification.where(
+//   "expiry_at",
+//   "<",
+//   today
+// ).fetchAll();
 
-//     // Delete the fetched notifications
-//     for (const notification of notificationsToDelete.models) {
-//       await notification.destroy();
-//     }
+// // Delete the fetched notifications
+// for (const notification of notificationsToDelete.models) {
+//   await notification.destroy();
+// }
 
 //     console.log("Automatic deletion of notifications completed.");
 //   } catch (err) {
