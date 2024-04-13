@@ -13,7 +13,7 @@ const adminRouter = require("./routes/adminRouter");
 const skillRouter = require("./routes/skillRouter");
 const app = express();
 
-app.enable("trust proxy");
+// app.enable("trust proxy");
 
 // Parser JSON
 app.use(express.json());

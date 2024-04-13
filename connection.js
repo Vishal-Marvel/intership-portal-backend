@@ -246,33 +246,45 @@ const createNotificationTable = async () => {
   }
 };
 
-knex.schema.hasTable("files").then((exists) => {
-  if (!exists) {
-    return knex.schema.createTable("files", (table) => {
-      table.string("id").primary();
-      table.string("file_name");
-      table.specificType("file", "longblob");
-      table.date("uploaded_at");
+const createFileTable = async () => {
+  try {
+    await knex.schema.hasTable("files").then((exists) => {
+      if (!exists) {
+        return knex.schema.createTable("files", (table) => {
+          table.string("id").primary();
+          table.string("file_name");
+          table.specificType("file", "longblob");
+          table.date("uploaded_at");
+        });
+      }
     });
+  } catch (e) {
+    console.error("Error creating Files table:", error);
   }
-});
+};
 
-knex.schema.hasTable("industry_details").then((exists) => {
-  if (!exists) {
-    return knex.schema.createTable("industry_details", (table) => {
-      table.string("id").primary();
-      table.string("company_name");
-      table.string("company_address");
-      table.string("company_ph_no");
-      table.string("cin_tin_gst_no");
-      table.string("industry_supervisor_name");
-      table.string("industry_supervisor_ph_no");
-      table.string("industry_supervisor_email");
-      table.date("added_at");
+const createIndustryDetails = async () => {
+  try {
+    await knex.schema.hasTable("industry_details").then((exists) => {
+      if (!exists) {
+        return knex.schema.createTable("industry_details", (table) => {
+          table.increments("_id").primary();
+          table.string("id").primary();
+          table.string("company_name");
+          table.string("company_address");
+          table.string("company_ph_no");
+          table.string("cin_tin_gst_no");
+          table.string("industry_supervisor_name");
+          table.string("industry_supervisor_ph_no");
+          table.string("industry_supervisor_email");
+          table.date("added_at");
+        });
+      }
     });
+  } catch (e) {
+    console.error("Error creating Industry Details table:", error);
   }
-});
-
+};
 createStaffsTable().then((r) =>
   createRolesTable().then((r) =>
     createStaffRoleTable().then((r) =>
@@ -281,10 +293,14 @@ createStaffsTable().then((r) =>
           createStudentSkillTable().then((r) =>
             createInternshipTable().then((r) =>
               createApprovalTable().then((r) =>
-                createNotificationTable().then(async (e) => {
-                  const startup = require("./utils/startup");
-                  await startup.performStartUp();
-                })
+                createFileTable().then((r) =>
+                  createIndustryDetails().then((r) =>
+                    createNotificationTable().then(async (e) => {
+                      const startup = require("./utils/startup");
+                      await startup.performStartUp();
+                    })
+                  )
+                )
               )
             )
           )

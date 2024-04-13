@@ -386,7 +386,7 @@ exports.studentLogin = catchAsync(async (req, res, next) => {
       httpOnly: true,
     };
 
-    res.cookie("jwt", token, cookieOptions).send();
+    res.cookie("jwt", token, cookieOptions);
 
     res.status(200).json({
       status: "success",
