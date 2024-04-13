@@ -22,7 +22,6 @@ exports.updateStudent = catchAsync(async (req, res) => {
     const studentId = req.user.id;
     const { name, year_of_studying, batch, section, phone_no, skills } =
       req.body;
-
     let profile_photo;
     if (req.file) {
       // Create a new record in the "files" table to store the new photo
@@ -248,9 +247,10 @@ exports.viewStudent = catchAsync(async (req, res) => {
     }
 
     // Transform the skills array to only include skill names
-    const transformedSkills = unpickfields.skills.map(
-      (skill) => ({id: skill.id,name:skill.skill_name})
-    );
+    const transformedSkills = unpickfields.skills.map((skill) => ({
+      id: skill.id,
+      name: skill.skill_name,
+    }));
 
     if (
       isStudent ||
@@ -309,7 +309,7 @@ exports.viewStudentInternship = catchAsync(async (req, res) => {
     let id;
     if (req.user.roles.includes("student")) {
       id = req.user.id;
-    }else{
+    } else {
       id = req.params.id;
     }
     // Fetch the internship details using the provided internshipId
