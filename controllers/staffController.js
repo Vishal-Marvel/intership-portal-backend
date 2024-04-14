@@ -294,8 +294,13 @@ exports.viewStaff = catchAsync(async (req, res) => {
   try {
     const loggedInStaffId = req.user.id; // ID of the logged-in staff member
     const loggedInStaffRole = req.user.roles; // Role of the logged-in staff member
-    const isHOD = loggedInStaffRole.includes("hod");
-    const isPrincipal = loggedInStaffRole.includes("principal");
+
+    const isAuth =
+      loggedInStaffRole.includes("ceo") ||
+      loggedInStaffRole.includes("admin") ||
+      loggedInStaffRole.includes("tapcell") ||
+      loggedInStaffRole.includes("principal") ||
+      loggedInStaffRole.includes("hod");
 
     let staffId;
     if (req.params.id) {
@@ -322,7 +327,7 @@ exports.viewStaff = catchAsync(async (req, res) => {
       ]);
     }
     // If the logged-in staff is the same as the staff being viewed or is higher staff, allow access
-    if (staffId === loggedInStaffId || isHOD || isPrincipal) {
+    if (staffId === loggedInStaffId || isAuth) {
       // Return the staff details
       return res.status(200).json({
         status: "success",
@@ -334,6 +339,7 @@ exports.viewStaff = catchAsync(async (req, res) => {
       throw new AppError("Unauthorised access to staff details", 403);
     }
   } catch (err) {
+    console.log(err);
     // Handle any errors that occur during the process
     const err1 = new AppError("Failed to fetch staff details", 500);
     err1.sendResponse(res);
