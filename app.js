@@ -21,13 +21,16 @@ app.use(express.urlencoded({ limit: "10kb", extended: true }));
 // Set cookie on req
 app.use(cookieParser());
 
-// // Handle CORS
-app.use(cors());
+const corsOptions = {
+  origin: "*", // Replace with the origin(s) you want to allow
+  optionsSuccessStatus: 200, // Some legacy browsers (IE11, various SmartTVs) choke on 204
+};
 
-app.options("*", cors());
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions));
 
 const limit = rateLimit({
-  max: 10000,
+  max: 100,
   windowMs: 60 * 60 * 60,
   message: "Too many request with this IP Address..Try again in 1 hour",
 });
