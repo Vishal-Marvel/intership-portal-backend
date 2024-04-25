@@ -682,61 +682,68 @@ exports.changePassword = catchAsync(async (req, res) => {
 });
 
 exports.protect = catchAsync(async (req, res, next) => {
-  let token;
-  // Get token
-  if (
-    req.headers.authorization &&
-    req.headers.authorization.startsWith("Bearer")
-  ) {
-    token = req.headers.authorization.split(" ")[1];
-  } else if (req.cookies.jwt) {
-    token = req.cookies.jwt;
-  }
-
-  // Token not present
-  if (!token) {
-    const err = new AppError("Log In First", 401);
-    err.sendResponse(res);
-    return;
-  }
-
-  // Verify token
-  const decoded = jwt.verify(token, process.env.JWT_SECRET);
-  const roles = decoded.roles;
-  // console.log(roles);
-  let user = null;
-  // Check if user exists
   try {
-    if (roles.includes("student"))
-      user = await Student.where({ id: decoded.id }).fetch();
-    else {
-      user = await Staff.where({ id: decoded.id }).fetch();
+    let token;
+    // Get token
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith("Bearer")
+    ) {
+      token = req.headers.authorization.split(" ")[1];
+    } else if (req.cookies.jwt) {
+      token = req.cookies.jwt;
     }
-  } catch (error) {
-    if (error.message == "EmptyResponse") {
+
+    // Token not present
+    if (!token) {
+      const err = new AppError("Log In First", 401);
+      err.sendResponse(res);
+      return;
+    }
+
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const roles = decoded.roles;
+    // console.log(roles);
+    let user = null;
+    // Check if user exists
+    try {
+      if (roles.includes("student"))
+        user = await Student.where({ id: decoded.id }).fetch();
+      else {
+        user = await Staff.where({ id: decoded.id }).fetch();
+      }
+    } catch (error) {
+      if (error.message == "EmptyResponse") {
+        const err = new AppError("User does not exist", 401);
+        err.sendResponse(res);
+        return;
+      }
+    }
+
+    if (!user) {
       const err = new AppError("User does not exist", 401);
       err.sendResponse(res);
       return;
     }
-  }
+    const responseUser = {
+      name: user.get("name"),
+      roles: roles,
+      id: user.get("id"),
+      department: user.get("department"),
+      sec_sit: user.get("sec_sit"),
+    };
+    // Set student on req
+    req.user = responseUser;
+    res.locals.user = responseUser;
 
-  if (!user) {
-    const err = new AppError("User does not exist", 401);
-    err.sendResponse(res);
+    next();
+  } catch (e) {
+    const er = new AppError(e.message, 500);
+    er.sendResponse();
+    console.error(e);
     return;
   }
-  const responseUser = {
-    name: user.get("name"),
-    roles: roles,
-    id: user.get("id"),
-    department: user.get("department"),
-    sec_sit: user.get("sec_sit"),
-  };
-  // Set student on req
-  req.user = responseUser;
-  res.locals.user = responseUser;
-
-  next();
 });
 
 exports.addRole = catchAsync(async (req, res) => {
