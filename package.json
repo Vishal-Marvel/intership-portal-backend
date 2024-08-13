@@ -33,6 +33,7 @@
     "googleapis": "^118.0.0",
     "html-pdf": "^3.0.1",
     "html-to-text": "^9.0.5",
+    "internship-portal": "file:",
     "jsonwebtoken": "^9.0.0",
     "knex": "^0.21.21",
     "moment": "^2.29.4",
